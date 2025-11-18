@@ -73,7 +73,16 @@ int main(void)
 	//inicia apagado
 	PORTD &= ~(1 << Battery_PIN); 
 	
+	//Habilitamos TX1 y RX1 para hacer el debug correcto	
+	DDRE |= (1 << PE1);   
+	DDRE &= ~(1 << PE0);  
+
+	
 	UART_init(MYUBRR);
+	
+	UART1_init(MYUBRR);
+	UART1_sendString("USART1 DEBUG OK\n\r");
+	
 	I2C_init();
 	comparadorA_init();
 	
@@ -87,6 +96,7 @@ int main(void)
 		//reset al modulo sigfox
 		snprintf(buffer, sizeof(buffer), "AT$RC\n\r");
 		UART_sendString(buffer);
+		UART1_sendString("AT$RC\n\r");
 		
 		tomar_medidas(&temp, &hum, &presion);
 		_delay_ms(100);
@@ -122,8 +132,28 @@ int main(void)
 		snprintf(buffer, sizeof(buffer), "AT$SF=%02x%02x%02x%02x%02x\n\r", bytes_SF [0], bytes_SF [1], bytes_SF [2], bytes_SF [3], bytes_SF [4]);
 		UART_sendString(buffer);
 		
+		//Enviamos para debug
+		UART1_sendString("AT$SF=%02x%02x%02x%02x%02x\n\r", bytes_SF [0], bytes_SF [1], bytes_SF [2], bytes_SF [3], bytes_SF [4]);
+							
+		//Parte de debug para el sistema en puerto serial 1
+		if (UART1_available()) {
+			char cmd = UART1_read();
+
+			if (cmd == 'r') {
+				UART1_sendString("Reset solicitado.\r\n");
+			}
+			else if (cmd == 's') {
+				UART1_sendString("Estado OK.\r\n");
+			}
+			else {
+				UART1_sendString("Comando desconocido: ");
+				UART1_sendChar(cmd);
+				UART1_sendString("\r\n");
+			}
+		}
+		
+		//Borramos los dato spara una siguiente muestra
 		memset(bytes_SF, 0, sizeof(bytes_SF));
-				
 		_delay_ms(1000);
 		
 
